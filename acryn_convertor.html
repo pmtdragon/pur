@@ -1,0 +1,1408 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Конвертер акрина и кораблей</title>
+    <style>
+        body {
+            background: -webkit-linear-gradient(135deg, rgb(30, 30, 30), rgb(46, 46, 46));
+			background: -moz-linear-gradient(135deg, rgb(30, 30, 30), rgb(46, 46, 46));
+			background: -o-linear-gradient(135deg, rgb(30, 30, 30), rgb(46, 46, 46));
+			background: -ms-linear-gradient(135deg, rgb(30, 30, 30), rgb(46, 46, 46));
+			background: linear-gradient(135deg, rgb(30, 30, 30), rgb(46, 46, 46));
+            color: #d1d1d1;
+            font-family: 'Arial', sans-serif;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 2.3em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+        }
+        .center-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .input-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 20px;
+            width: 100%;
+        }
+        textarea {
+            width: 100%;
+            min-height: 180px;
+            resize: vertical;
+            overflow: auto;
+            padding: 15px;
+            background-color: #2e2e2e;
+            color: #afafaf;
+            border: 1px solid #afafaf;
+            border-radius: 8px;
+            font-size: 16px;
+            margin-bottom: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+        #output {
+            min-height: 320px;
+            background-color: #333;
+            color: #afafaf;
+            border: 1px solid #afafaf;
+            border-radius: 8px;
+            font-size: 16px;
+            padding: 15px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            width: 100%;
+        }
+        button {
+            background-color: #1e1e1e;
+            color: #afafaf;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 20px;
+            margin: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s, transform 0.2s;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+        button:hover {
+            background-color: #afafaf;
+            color: #1e1e1e;
+            transform: scale(1.05);
+        }
+        .message {
+            display: none;
+            margin-top: 10px;
+            color: #66bb6a;
+            text-align: center;
+            font-size: 14px;
+        }
+        #notification {
+            display: none;
+            margin-top: 10px;
+            color: #66bb6a;
+            text-align: center;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Конвертер акрина</h1>
+    <div class="center-container">
+        <div class="input-area">	
+			<textarea id="input" placeholder="Вставьте акрин оружия/оборудования/корпуса из Lang.dat здесь..."></textarea>
+			<div>
+			<button id="convert">Convert</button>
+			<button id="copy">Copy</button>
+			<button id="reset">Reset</button>
+            </div>			
+			<div class="message" id="notification">Успешно скопировано в буфер обмена</div>
+		</div>
+		<textarea id="output" readonly></textarea>
+    </div>
+
+    <script>
+        document.getElementById('convert').addEventListener('click', function() {
+            const input = document.getElementById('input').value;
+            const output = document.getElementById('output');
+            let result = '';
+
+            // Обработка текста
+			const sizeMatch = input.match(/(?<!\w)Size=\+?(-?\d+)/); //чтобы на HullGraphSize не триггерилось
+            const nameMatch = input.match(/Name=(.+)/);
+            const fragilityMatch = input.match(/Fragility=\+?(-?\d+)/);
+            const equipMatch = input.match(/Equipments=(.+)/);
+            const ownerMatch = input.match(/Owner=(.+)/);
+			
+			// Обработка Name
+            if (!nameMatch) {
+                result += '⚠️Внимание: название акрина не найдено!\n';
+            } else {
+                result += `Акрин: ${nameMatch[1]}\n`;
+            }
+
+            // Проверка BlockMM
+			const blockMMMatch = input.match(/BlockMM=\+?(-?\d+)/);
+            if (blockMMMatch) {
+                const blockMMValue = blockMMMatch[1];
+                if (blockMMValue === '1') {
+                    result += "Несовместим с микромодулями\n";
+	            } else if (blockMMValue === '0') {
+                result += "⚠️Совместим с микрокодулями, но 'BlockMM' 0 может иметь смысл только в ребалансе. Рекомендуется ручная проверка.\n";				
+                } else if (blockMMValue === '' || blockMMValue < 0 || blockMMValue > 1) {
+                    result += "⚠️Ошибка! Допустимые значения 'BlockMM': '1' или '0'\n";
+                }
+            }
+
+            // Проверка BlockImp
+			const blockImpMatch = input.match(/BlockImp=\+?(-?\d+)/);
+            if (blockImpMatch) {
+                const blockImpValue = blockImpMatch[1];
+                if (blockImpValue === '1') {
+                    result += "Не может быть улучшен на научной базе\n";
+	            } else if (blockImpValue === '0') {
+                result += "⚠️Может быть улучшен на научной базе, но 'BlockImp' 0 может иметь смысл только в ребалансе. Рекомендуется ручная проверка.\n";	
+                } else if (blockImpValue === '' || blockImpValue < 0 || blockImpValue > 1) {
+                    result += "⚠️Ошибка! Допустимые значения 'BlockImp': '1' или '0'\n";
+                }
+            }
+			
+			// Обработка Owner //
+			if (!ownerMatch) {
+			result += "Встречается производства: Maloc, Peleng, People, Fei, Gaal, Pirate\n"; // Если Owner не найден, значит подойдет к этим расам
+			} else {
+			let ownerValue = ownerMatch[1].replace(/,/g, ', '); // Форматируем значение Owner
+			let races = ownerValue; // Начинаем с найденных рас
+			
+			if (ownerValue.includes("Nothing")) {
+			result += "'Owner' 'Nothing' вероятно, означает размещение предмета в магазинах и раздачу ему рас скриптом\n";
+			}			
+			
+			// Проверка на наличие "Any" и другого слова
+			if (ownerValue.includes("Any") && ownerValue.split(',').length > 1) {
+			result += "⚠️Внимание! 'Owner' не может быть одновременно 'Any' + 'другой Owner'. Требуется ручная проверка!\n";
+			}
+
+			// Замена "Any" на нужные расы
+			if (races.includes("Any")) {
+			races = "Maloc, Peleng, People, Fei, Gaal, Pirate"; // Заменяем "Any" на указанные расы
+			}
+
+			result += "Встречается производства: " + races + '\n'; // Выводим результат
+			}
+			
+			// Обработка OnPlanets
+			const onPlanetsMatch = input.match(/OnPlanets=\+?(-?\d+)/);
+			let onPlanetsWarningSpace = ""; // Переменная для хранения предупреждения
+			let onPlanetsWarning = ""; // Переменная для хранения предупреждения, в коде дальше выводится в самом низу всех строк, чтобы не мешало
+			if (onPlanetsMatch) {
+				const onPlanetsValue = onPlanetsMatch[1];
+
+				if (onPlanetsValue === '1') {
+					result += "Продается на планетах расы-производителя: да\n";
+					onPlanetsWarningSpace = "--------------------------\n";
+					onPlanetsWarning = "🔎Если это акрин орудия, обязательно см. 'StoreAvailability' базовой пушки. Если ее 'StoreAvailability' имеет ограничение по расе или фракции ('MalocOnly', 'PelengOnly', 'PeopleOnly', 'FeiOnly', 'GaalOnly', 'PirateOnly', 'CoalitionOnly'), то в акрине валидным считается только значение 'Owner', подходящее под такие ограничения (не подходящие расы в 'Owner' акрина работать не будут). Если в акрине не будет найден 'Owner', совпадающий с расой в 'StoreAvailability' базового орудия, это приведет к тому, что акрин никогда не попадет в магазин! Если 'StoreAvailability' не ограничивает продажу базового орудия для определенной расы или фракции, или это не акрин орудия, не обращайте внимания на это предупреждение🔎\n";
+				} else if (onPlanetsValue === '0') {
+					result += "Продается на планетах: нет\n";
+				} else if (onPlanetsValue === '' || parseInt(onPlanetsValue) < 0 || parseInt(onPlanetsValue) > 1) {
+					result += "⚠️Ошибка! Допустимые значения 'OnPlanets': '1' или '0'\n";
+				}
+			} else {
+				result += "Продается на планетах: нет\n"; // Если OnPlanets не найдено, игра считает, что акрин не встречается на планетах
+			}
+
+			// Проверка на наличие StoreAvailability
+			if (input.includes("StoreAvailability=")) {
+				result += "⚠️Ошибка! В акринах параметр 'StoreAvailability' не используется. Он предназначен для базовых орудий\n";
+			}
+
+            // Обработка RacialRestriction
+            const racialRestrictionMatch = input.match(/RacialRestriction=\+?(-?\d*)/);
+            if (racialRestrictionMatch) {
+                const racialValue = racialRestrictionMatch[1];
+
+                if (racialValue === '1') {
+                    result += "Бонусы акрина работают только для указанных рас.\n";
+                } else if (racialValue === '0') { //вообще то вывод сообщения при 0 лучше делать на случай если акрин или ребаланс перезаписывает расовый запрет
+                    // Просто переходим к следующему коду
+                } else if (racialValue === '' || racialValue < 0 || racialValue > 1) {
+                    result += "⚠️Внимание! 'RacialRestriction' может быть лишь '1' или '0'. Требуется ручная проверка!\n";
+                }
+            }
+			
+            // Обработка Ruins
+            const ruinsMatch = input.match(/Ruins=(.*)/);
+            if (ruinsMatch) {
+                const ruinsValue = ruinsMatch[1].trim();
+                if (ruinsValue === '') {
+                    result += "⚠️Внимание! Значение 'Ruins' не соответствует ожидаемому! Требуется ручная проверка\n";
+                } else {
+                    const ruinsList = ruinsValue.split(',').map(item => item.trim());
+                    result += `Продается на станциях: ${ruinsList.join(', ')}\n`;
+                }
+            } else {
+                result += "Продается на станциях: нет\n";
+            }
+
+			// Обработка Priority
+			const priorityMatch = input.match(/Priority=\+?(\d+)/);
+			if (!priorityMatch) {
+				result += "⚠️Внимание! Отсутствует параметр 'Priority', требуется ручная проверка!\n";
+			} else {
+				const priorityValue = parseInt(priorityMatch[1]);
+				if (isNaN(priorityValue) || priorityValue < 0 || priorityValue > 100) {
+					result += "⚠️Внимание! 'Priority' должен быть в диапазоне от 1 до 100. Требуется ручная проверка!\n";
+				} else {
+					const gtu = Math.ceil(8 * priorityValue * 0.01);
+					result += `Встречается с ${gtu} ГТУ\n`;
+				}
+			}
+
+				// Расчет стоимости
+				if (!input.includes("Cost=")) {
+					// Если выражение не найдено, продолжаем выполнение кода ниже
+				} else {
+					// Обработка стоимости
+					const costMatch = input.match(/Cost=(-?\d+)/);
+					if (costMatch) {
+						const PRICE = parseInt(costMatch[1]);
+						if (PRICE <= 0) {
+							result += "⚠️Внимание! Числовое значение 'Cost' не соответствует ожидаемому, требуется ручная проверка.\n";
+						} else if (PRICE === 100) {
+						result += "⚠️'Cost' 100 может иметь смысл только в ребалансе. Рекомендуется ручная проверка.\n";
+						} else if (PRICE < 100) {
+							const PR = 100 - PRICE;
+							result += `Стоимость: -${PR}%\n`;
+						} else {
+							const PR = PRICE - 100;
+							result += `Стоимость: +${PR}%\n`;
+						}
+					}
+				}
+
+				// Обработка Fragility
+				if (fragilityMatch) {
+					let B = parseInt(fragilityMatch[1].replace('+', '')); // Убираем знак +, если он есть
+					if (B < 0 || isNaN(B)) {
+						result += "⚠️Ошибка: 'Fragility' < 0. Рекомендуется ручная проверка.\n";
+					} else if (B === 100) {
+						result += "⚠️'Fragility' 100 может иметь смысл только в ребалансе. Рекомендуется ручная проверка.\n";
+					} else {
+						const equipExists = equipMatch && equipMatch[1].trim();
+						const hasHull = equipExists && equipExists.includes("Hull");
+						const otherEquipExists = equipExists && equipExists.split(',').some(e => e.trim() !== "Hull");
+
+						if (hasHull && otherEquipExists) {
+							// Чтобы выводились и сопротивления и надежность оборудования, если в Equipments есть и корпус и любое оборудование разом
+							if (B === 0) {
+							result += "Иммунитет к э/о/р урону.\n";
+							result += "Надежность: вечная.\n";
+							} else {
+								const Y = (B > 100) ? (100 - B) * -1 : (100 - B);
+								const reliabilityX = (B > 100) ? Math.round((100 / B) * 100) - 100 : Math.round((100 / B) * 100) - 100;
+								result += (B > 100) ? `Уязвимость к э/о/р урону: +${Y}%\n` : `Сопротивление э/о/р урону: +${Y}%\n`;
+								result += (B > 100) ? `Надежность: ${reliabilityX}%\n` : `Надежность: +${reliabilityX}%\n`;
+							}
+						} else if (hasHull) {
+							// Если в Equipments только корпус, а оборудования нет, выводятся только данные о корпусе
+							if (B === 0) {
+							result += "Иммунитет к э/о/р урону.\n";
+							} else {							
+							const Y = 100 - B;
+							result += (B < 100) ? `Сопротивление э/о/р урону: +${Y}%\n` : `Уязвимость к э/о/р урону: +${(Y) * -1}%\n`;
+							}
+						} else if (otherEquipExists) {
+							// Если в Equipments только оборудование, а корпуса не прописано, выводятся только данные о надежности оборудования
+							const reliabilityX = Math.round((100 / B) * 100) - 100;
+							result += (B === 0) ? "Надежность: вечная.\n" : (reliabilityX > 0 ? `Надежность: +${reliabilityX}%\n` : `Надежность: ${reliabilityX}%\n`);
+						}
+					}
+				} else if (input.includes("Fragility=")) {
+					result += "⚠️Ошибка! Значение 'Fragility' не указано. Требуется ручная проверка.\n";
+				}			
+
+			// Обработка FragilityEnergy
+			const fragilityEnergyMatch = input.match(/FragilityEnergy=\+?(-?\d+)/);
+			if (fragilityEnergyMatch) {
+				let ENR = parseInt(fragilityEnergyMatch[1].replace('+', '')); // Убираем знак +, если он есть
+				const equipExists = equipMatch && equipMatch[1].trim();
+				const hasHull = equipExists && equipExists.includes("Hull");
+
+				if (hasHull) {
+					if (ENR > 0 && ENR < 100) {
+						const Y = 100 - ENR;
+						result += `Сопротивление к энерг. урону: +${Y}%\n`;
+					} else if (ENR > 100) {
+						const Y = (100 - ENR) * -1;
+						result += `Уязвимость к энерг. урону: +${Y}%\n`;
+					} else if (ENR === 0) {
+						result += "Иммунитет к энерг. урону\n";
+					} else if (ENR < 0) {
+						result += "⚠️Ошибка: 'FragilityEnergy' < 0. Рекомендуется ручная проверка.\n";
+					} else if (ENR === 100) {
+						result += "⚠️'FragilityEnergy' 100 может иметь смысл только в ребалансе. Рекомендуется ручная проверка.\n";
+					}
+				}
+			} else if (input.includes("FragilityEnergy=")) {
+				// Если строка FragilityEnergy найдена, но значение не указано
+				const equipExists = equipMatch && equipMatch[1].trim();
+				const hasHull = equipExists && equipExists.includes("Hull");
+				if (hasHull) {
+					result += "⚠️Ошибка! Значение 'FragilityEnergy' не указано. Требуется ручная проверка\n";
+				}
+			}
+			
+			// Обработка FragilitySplinter
+			const FragilitySplinterMatch = input.match(/FragilitySplinter=\+?(-?\d+)/);
+			if (FragilitySplinterMatch) {
+				let SPL = parseInt(FragilitySplinterMatch[1].replace('+', '')); // Убираем знак +, если он есть
+				const equipExists = equipMatch && equipMatch[1].trim();
+				const hasHull = equipExists && equipExists.includes("Hull");
+
+				if (hasHull) {
+					if (SPL > 0 && SPL < 100) {
+						const Y = 100 - SPL;
+						result += `Сопротивление к оскол. урону: +${Y}%\n`;
+					} else if (SPL > 100) {
+						const Y = (100 - SPL) * -1;
+						result += `Уязвимость к оскол. урону: +${Y}%\n`;
+					} else if (SPL === 0) {
+						result += "Иммунитет к оскол. урону\n";
+					} else if (SPL < 0) {
+						result += "⚠️Ошибка: 'FragilitySplinter' < 0. Рекомендуется ручная проверка.\n";
+					} else if (SPL === 100) {
+						result += "⚠️'FragilitySplinter' 100 может иметь смысл только в ребалансе. Рекомендуется ручная проверка.\n";
+					}
+				}
+			} else if (input.includes("FragilitySplinter=")) {
+				// Если строка FragilitySplinter найдена, но значение не указано
+				const equipExists = equipMatch && equipMatch[1].trim();
+				const hasHull = equipExists && equipExists.includes("Hull");
+				if (hasHull) {
+					result += "⚠️Ошибка! Значение 'FragilitySplinter' не указано. Требуется ручная проверка\n";
+				}
+			}
+			
+			// Обработка FragilityMissile
+			const FragilityMissileMatch = input.match(/FragilityMissile=\+?(-?\d+)/);
+			if (FragilityMissileMatch) {
+				let MSL = parseInt(FragilityMissileMatch[1].replace('+', '')); // Убираем знак +, если он есть
+				const equipExists = equipMatch && equipMatch[1].trim();
+				const hasHull = equipExists && equipExists.includes("Hull");
+
+				if (hasHull) {
+					if (MSL > 0 && MSL < 100) {
+						const Y = 100 - MSL;
+						result += `Сопротивление к ракетн. урону: +${Y}%\n`;
+					} else if (MSL > 100) {
+						const Y = (100 - MSL) * -1;
+						result += `Уязвимость к ракетн. урону: +${Y}%\n`;
+					} else if (MSL === 0) {
+						result += "Иммунитет к ракетн. урону\n";
+					} else if (MSL < 0) {
+						result += "⚠️Ошибка: 'FragilityMissile' < 0. Рекомендуется ручная проверка.\n";
+					} else if (MSL === 100) {
+						result += "⚠️'FragilityMissile' 100 может иметь смысл только в ребалансе. Рекомендуется ручная проверка.\n";
+					}
+				}
+			} else if (input.includes("FragilityMissile=")) {
+				// Если строка FragilityMissile найдена, но значение не указано
+				const equipExists = equipMatch && equipMatch[1].trim();
+				const hasHull = equipExists && equipExists.includes("Hull");
+				if (hasHull) {
+					result += "⚠️Ошибка! Значение 'FragilityMissile' не указано. Требуется ручная проверка\n";
+				}
+			}
+
+           // Обработка Size
+            if (sizeMatch) {
+                const sizeValue = parseInt(sizeMatch[1]);
+                if (sizeValue <= 0) {
+                    result += "⚠️Внимание! Значение 'Size' не может быть <= 0!\n";
+                } else if (sizeValue > 100) {
+                    result += `Размер: +${sizeValue - 100}%\n`;
+                } else if (sizeValue > 0 && sizeValue < 100) {
+                    result += `Размер: -${100 - sizeValue}%\n`;
+                } else if (sizeValue === 100) {
+                    result += `⚠️'Size' 100 может иметь смысл только в ребалансе. Рекомендуется ручная проверка.\n`;
+                }
+            }
+					
+			// Обработка bonHull
+			const bonHullMatch = input.match(/bonHull=\+?(-?\d+)/);
+			if (bonHullMatch) {
+				const A = parseInt(bonHullMatch[1]);
+				if (A > 0) {
+					result += `Броня корпуса: +${A} ед.\n`;
+				} else if (A < 0) {
+					result += `Броня корпуса: ${A} ед.\n`;
+				} else if (A === 0) {
+					result += `⚠️'bonHull' 0 может иметь смысл только в ребалансе. Рекомендуется ручная проверка.\n`;
+				}
+			} else if (input.includes("bonHull=")) {
+				if (input.match(/bonHull=\s*/)) {
+					result += "⚠️Внимание! Значение 'bonHull' не соответствует ожидаемому! Требуется ручная проверка!\n";
+				} else {
+					result += "⚠️Внимание! Значение 'bonHull' не найдено! Требуется ручная проверка!\n";
+				}
+			}
+			
+			// Обработка bonMass
+            const bonMassMatch = input.match(/bonMass=\+?(-?\d+)/);
+            if (bonMassMatch) {
+                const MBS = parseInt(bonMassMatch[1]);
+                if (MBS === 0) {
+                    result += "⚠️'bonMass' 0 может иметь смысл только в ребалансе. Рекомендуется ручная проверка.\n";
+                } else if (MBS < -99) {
+                    result += "⚠️Масса корабля не может быть < -99%. Рекомендуется ручная проверка\n";
+                } else if (MBS > 0) {
+                    result += `Масса корабля: +${MBS}%\n`;
+                } else {
+                    result += `Масса корабля: ${MBS}%\n`;
+                }
+            } else if (input.includes("bonMass=")) {
+                if (input.match(/bonMass=\s*/)) {
+                    result += "Внимание! Значение 'bonMass' не найдено! Требуется ручная проверка!\n";
+                }
+            }
+
+			// Обработка bonSpeed
+			const bonSpeedMatch = input.match(/bonSpeed=\+?(-?\d+)/);
+			if (bonSpeedMatch) {
+				const E = parseInt(bonSpeedMatch[1]);
+				if (E > 0) {
+					result += `Скорость двигателя: +${E} ед.\n`;
+				} else if (E < 0) {
+					result += `Скорость двигателя: ${E} ед.\n`;
+				} else if (E === 0) {
+					result += `⚠️'bonSpeed' 0 может иметь смысл только в ребалансе. Рекомендуется ручная проверка.\n`;
+				}
+			} else if (input.includes("bonSpeed=")) {
+				if (input.match(/bonSpeed=\s*/)) {
+					result += "⚠️Внимание! Значение 'bonSpeed' не соответствует ожидаемому! Требуется ручная проверка!\n";
+				} else {
+					result += "⚠️Внимание! Значение 'bonSpeed' не найдено! Требуется ручная проверка!\n";
+				}
+			}
+			
+			// Обработка bonJump
+			const bonJumpMatch = input.match(/bonJump=\+?(-?\d+)/);
+			if (bonJumpMatch) {
+				const F = parseInt(bonJumpMatch[1]);
+				if (F > 0) {
+					result += `Дальность прыжка: +${F} пк.\n`;
+				} else if (F < 0) {
+					result += `Дальность прыжка: ${F} пк.\n`;
+				} else if (F === 0) {
+					result += `⚠️'bonJump' 0 может иметь смысл только в ребалансе. Рекомендуется ручная проверка\n`;
+				}
+			} else if (input.includes("bonJump=")) {
+				if (input.match(/bonJump=\s*/)) {
+					result += "⚠️Внимание! Значение 'bonJump' не соответствует ожидаемому! Требуется ручная проверка!\n";
+				} else {
+					result += "⚠️Внимание! Значение 'bonJump' не найдено! Требуется ручная проверка!\n";
+				}
+			}
+			
+			// Обработка bonFuel
+			const bonFuelMatch = input.match(/bonFuel=\+?(-?\d+)/);
+			if (bonFuelMatch) {
+				const D = parseInt(bonFuelMatch[1]);
+				if (D > 0) {
+					result += `Вместимость топл. бака: +${D} ед.\n`;
+				} else if (D < 0) {
+					result += `Вместимость топл. бака: ${D} ед.\n`;
+				} else if (D === 0) {
+					result += `⚠️'bonFuel' 0 может иметь смысл только в ребалансе. Рекомендуется ручная проверка\n`;
+				}
+			} else if (input.includes("bonFuel=")) {
+				if (input.match(/bonFuel=\s*/)) {
+					result += "⚠️Внимание! Значение 'bonFuel' не соответствует ожидаемому! Требуется ручная проверка!\n";
+				} else {
+					result += "⚠️Внимание! Значение 'bonFuel' не найдено! Требуется ручная проверка!\n";
+				}
+			}
+			
+			// Обработка bonDroid
+			const bonDroidMatch = input.match(/bonDroid=\+?(-?\d+)/);
+			if (bonDroidMatch) {
+				const I = parseInt(bonDroidMatch[1]);
+				if (I > 0) {
+					result += `Эффективность дроида: +${I} ед.\n`;
+				} else if (I < 0) {
+					result += `Эффективность дроида: ${I} ед.\n`;
+				} else if (I === 0) {
+					result += `⚠️'bonDroid' 0 может иметь смысл только в ребалансе. Рекомендуется ручная проверка\n`;
+				}
+			} else if (input.includes("bonDroid=")) {
+				if (input.match(/bonDroid=\s*/)) {
+					result += "⚠️Внимание! Значение 'bonDroid' не соответствует ожидаемому! Требуется ручная проверка!\n";
+				} else {
+					result += "⚠️Внимание! Значение 'bonDroid' не найдено! Требуется ручная проверка!\n";
+				}
+			}
+			
+			// Обработка bonHook
+			const bonHookMatch = input.match(/bonHook=\+?(-?\d+)/);
+			if (bonHookMatch) {
+				const J = parseInt(bonHookMatch[1]);
+				if (J > 0) {
+					result += `Мощность захвата: +${J} ед.\n`;
+				} else if (J < 0) {
+					result += `Мощность захвата: ${J} ед.\n`;
+				} else if (J === 0) {
+					result += `⚠️'bonHook' 0 может иметь смысл только в ребалансе. Рекомендуется ручная проверка\n`;
+				}
+			} else if (input.includes("bonHook=")) {
+				if (input.match(/bonHook=\s*/)) {
+					result += "⚠️Внимание! Значение 'bonHook' не соответствует ожидаемому! Требуется ручная проверка!\n";
+				} else {
+					result += "⚠️Внимание! Значение 'bonHook' не найдено! Требуется ручная проверка!\n";
+				}
+			}
+			
+			// Обработка bonHookRadiusRadius
+			const bonHookRadiusRadiusMatch = input.match(/bonHookRadius=\+?(-?\d+)/);
+			if (bonHookRadiusRadiusMatch) {
+				const N = parseInt(bonHookRadiusRadiusMatch[1]);
+				if (N > 0) {
+					result += `Дальность захвата: +${N} ед.\n`;
+				} else if (N < 0) {
+					result += `Дальность захвата: ${N} ед.\n`;
+				} else if (N === 0) {
+					result += `⚠️'bonHookRadius' 0 может иметь смысл только в ребалансе. Рекомендуется ручная проверка\n`;
+				}
+			} else if (input.includes("bonHookRadius=")) {
+				if (input.match(/bonHookRadius=\s*/)) {
+					result += "⚠️Внимание! Значение 'bonHookRadius' не соответствует ожидаемому! Требуется ручная проверка!\n";
+				} else {
+					result += "⚠️Внимание! Значение 'bonHookRadius' не найдено! Требуется ручная проверка!\n";
+				}
+			}
+			
+			// Обработка bonHookMaxSpeed
+			const bonHookMaxSpeedMatch = input.match(/bonHookMaxSpeed=\+?(-?\d+)/);
+			if (bonHookMaxSpeedMatch) {
+				const L = parseInt(bonHookMaxSpeedMatch[1]);
+				if (L > 0) {
+					result += `Макс. скор. захвата: +${L} ед.\n`;
+				} else if (L < 0) {
+					result += `Макс. скор. захвата: ${L} ед.\n`;
+				} else if (L === 0) {
+					result += `⚠️'bonHookMaxSpeed' 0 может иметь смысл только в ребалансе. Рекомендуется ручная проверка\n`;
+				}
+			} else if (input.includes("bonHookMaxSpeed=")) {
+				if (input.match(/bonHookMaxSpeed=\s*/)) {
+					result += "⚠️Внимание! Значение 'bonHookMaxSpeed' не соответствует ожидаемому! Требуется ручная проверка!\n";
+				} else {
+					result += "⚠️Внимание! Значение 'bonHookMaxSpeed' не найдено! Требуется ручная проверка!\n";
+				}
+			}
+			
+			// Обработка bonHookMinSpeed
+			const bonHookMinSpeedMatch = input.match(/bonHookMinSpeed=\+?(-?\d+)/);
+			if (bonHookMinSpeedMatch) {
+				const M = parseInt(bonHookMinSpeedMatch[1]);
+				if (M > 0) {
+					result += `Мин. скор. захвата: +${M} ед.\n`;
+				} else if (M < 0) {
+					result += `Мин. скор. захвата: ${M} ед.\n`;
+				} else if (M === 0) {
+					result += `⚠️'bonHookMinSpeed' 0 может иметь смысл только в ребалансе. Рекомендуется ручная проверка\n`;
+				}
+			} else if (input.includes("bonHookMinSpeed=")) {
+				if (input.match(/bonHookMinSpeed=\s*/)) {
+					result += "⚠️Внимание! Значение 'bonHookMinSpeed' не соответствует ожидаемому! Требуется ручная проверка!\n";
+				} else {
+					result += "⚠️Внимание! Значение 'bonHookMinSpeed' не найдено! Требуется ручная проверка!\n";
+				}
+			}
+			
+			// Обработка bonDef
+			const bonDefMatch = input.match(/bonDef=\+?(-?\d+)/);
+			if (bonDefMatch) {
+				const K = parseInt(bonDefMatch[1]);
+				if (K > 0 && K <= 99) {
+					result += `Мощность ГЗП: +${K}%\n`;
+				} else if (K > 99) {
+					result += `Мощность ГЗП: +${K}% (не имеет смысла, максимально допустимое значение 99%)\n`;
+				} else if (K < 0) {
+					result += `Мощность ГЗП: ${K}%\n`;
+				} else if (K === 0) {
+					result += `⚠️'bonDef' 0 может иметь смысл только в ребалансе. Рекомендуется ручная проверка\n`;
+				}
+			} else if (input.includes("bonDef=")) {
+				if (input.match(/bonDef=\s*/)) {
+					result += "⚠️Внимание! Значение 'bonDef' не соответствует ожидаемому! Требуется ручная проверка!\n";
+				} else {
+					result += "⚠️Внимание! Значение 'bonDef' не найдено! Требуется ручная проверка!\n";
+				}
+			}
+			
+			// Обработка bonRadar
+			const bonRadarMatch = input.match(/bonRadar=\+?(-?\d+)/);
+			if (bonRadarMatch) {
+				const G = parseInt(bonRadarMatch[1]);
+				if (G > 0) {
+					result += `Дальность радара: +${G} ед.\n`;
+				} else if (G < 0) {
+					result += `Дальность радара: ${G} ед.\n`;
+				} else if (G === 0) {
+					result += `⚠️'bonRadar' 0 может иметь смысл только в ребалансе. Рекомендуется ручная проверка\n`;
+				}
+			} else if (input.includes("bonRadar=")) {
+				if (input.match(/bonRadar=\s*/)) {
+					result += "⚠️Внимание! Значение 'bonRadar' не соответствует ожидаемому! Требуется ручная проверка!\n";
+				} else {
+					result += "⚠️Внимание! Значение 'bonRadar' не найдено! Требуется ручная проверка!\n";
+				}
+			}
+			
+			// Обработка bonScan
+			const bonScanMatch = input.match(/bonScan=\+?(-?\d+)/);
+			if (bonScanMatch) {
+				const H = parseInt(bonScanMatch[1]);
+				if (H > 0) {
+					result += `Мощность сканера: +${H}%\n`;
+				} else if (H < 0) {
+					result += `Мощность сканера: ${H}%\n`;
+				} else if (H === 0) {
+					result += `⚠️'bonScan' 0 может иметь смысл только в ребалансе. Рекомендуется ручная проверка\n`;
+				}
+			} else if (input.includes("bonScan=")) {
+				if (input.match(/bonScan=\s*/)) {
+					result += "⚠️Внимание! Значение 'bonScan' не соответствует ожидаемому! Требуется ручная проверка!\n";
+				} else {
+					result += "⚠️Внимание! Значение 'bonScan' не найдено! Требуется ручная проверка!\n";
+				}
+			}
+			
+			// Обработка bonWEnergy
+			const bonWEnergyMatch = input.match(/bonWEnergy=\+?(-?\d+)/);
+			if (bonWEnergyMatch) {
+				const O = parseInt(bonWEnergyMatch[1]);
+				if (O > 0) {
+					result += `Сила энерг. оружия: +${O} ед.\n`;
+				} else if (O < 0) {
+					result += `Сила энерг. оружия: ${O} ед.\n`;
+				} else if (O === 0) {
+					result += `⚠️'bonWEnergy' 0 может иметь смысл только в ребалансе. Рекомендуется ручная проверка\n`;
+				}
+			} else if (input.includes("bonWEnergy=")) {
+				if (input.match(/bonWEnergy=\s*/)) {
+					result += "⚠️Внимание! Значение 'bonWEnergy' не соответствует ожидаемому! Требуется ручная проверка!\n";
+				} else {
+					result += "⚠️Внимание! Значение 'bonWEnergy' не найдено! Требуется ручная проверка!\n";
+				}
+			}
+			
+			// Обработка bonWSplinter
+			const bonWSplinterMatch = input.match(/bonWSplinter=\+?(-?\d+)/);
+			if (bonWSplinterMatch) {
+				const P = parseInt(bonWSplinterMatch[1]);
+				if (P > 0) {
+					result += `Сила оскол. оружия: +${P} ед.\n`;
+				} else if (P < 0) {
+					result += `Сила оскол. оружия: ${P} ед.\n`;
+				} else if (P === 0) {
+					result += `⚠️'bonWSplinter' 0 может иметь смысл только в ребалансе. Рекомендуется ручная проверка\n`;
+				}
+			} else if (input.includes("bonWSplinter=")) {
+				if (input.match(/bonWSplinter=\s*/)) {
+					result += "⚠️Внимание! Значение 'bonWSplinter' не соответствует ожидаемому! Требуется ручная проверка!\n";
+				} else {
+					result += "⚠️Внимание! Значение 'bonWSplinter' не найдено! Требуется ручная проверка!\n";
+				}
+			}
+			
+			// Обработка bonWMissile
+			const bonWMissileMatch = input.match(/bonWMissile=\+?(-?\d+)/);
+			if (bonWMissileMatch) {
+				const R = parseInt(bonWMissileMatch[1]);
+				if (R > 0) {
+					result += `Сила ракетн. оружия: +${R} ед.\n`;
+				} else if (R < 0) {
+					result += `Сила ракетн. оружия: ${R} ед.\n`;
+				} else if (R === 0) {
+					result += `⚠️'bonWMissile' 0 может иметь смысл только в ребалансе. Рекомендуется ручная проверка\n`;
+				}
+			} else if (input.includes("bonWMissile=")) {
+				if (input.match(/bonWMissile=\s*/)) {
+					result += "⚠️Внимание! Значение 'bonWMissile' не соответствует ожидаемому! Требуется ручная проверка!\n";
+				} else {
+					result += "⚠️Внимание! Значение 'bonWMissile' не найдено! Требуется ручная проверка!\n";
+				}
+			}
+			
+			// Обработка bonMissileSpeed
+			const bonMissileSpeedMatch = input.match(/bonMissileSpeed=\+?(-?\d+)/);
+			if (bonMissileSpeedMatch) {
+				const T = parseInt(bonMissileSpeedMatch[1]);
+				if (T > 0) {
+					result += `Скор. ракет: +${T} ед.\n`;
+				} else if (T < 0) {
+					result += `Скор. ракет: ${T} ед.\n`;
+				} else if (T === 0) {
+					result += `⚠️'bonMissileSpeed' 0 может иметь смысл только в ребалансе. Рекомендуется ручная проверка\n`;
+				}
+			} else if (input.includes("bonMissileSpeed=")) {
+				if (input.match(/bonMissileSpeed=\s*/)) {
+					result += "⚠️Внимание! Значение 'bonMissileSpeed' не соответствует ожидаемому! Требуется ручная проверка!\n";
+				} else {
+					result += "⚠️Внимание! Значение 'bonMissileSpeed' не найдено! Требуется ручная проверка!\n";
+				}
+			}
+			
+			// Обработка боезапаса
+			const bonAmmoMatch = input.match(/bonAmmo=\+?(-?\d+)/);
+			if (bonAmmoMatch) {
+				const AMMO = parseInt(bonAmmoMatch[1]);
+				if (AMMO > 0) {
+					result += `Боезапас ракетн. оружия: +${AMMO}\n`;
+				} else if (AMMO < 0) {
+					result += `Боезапас ракетн. оружия: ${AMMO}\n`;
+				} else if (AMMO === 0) {
+					result += `⚠️'bonAmmo' 0 может иметь смысл только в ребалансе. Рекомендуется ручная проверка\n`;
+				}
+			} else if (input.includes("bonAmmo=")) {
+				if (input.match(/bonAmmo=\s*/)) {
+					result += "⚠️Внимание! Значение 'bonAmmo' не соответствует ожидаемому! Требуется ручная проверка!\n";
+				} else {
+					result += "⚠️Внимание! Значение 'bonAmmo' не найдено! Требуется ручная проверка!\n";
+				}
+			}
+			
+			// Обработка ракет в залпе
+			const bonShotsMatch = input.match(/bonShots=\+?(-?\d+)/);
+			if (bonShotsMatch) {
+				const BNR = parseInt(bonShotsMatch[1]);
+				if (BNR > 0) {
+					result += `+${BNR} ракет в залпе\n`;
+				} else if (BNR < 0) {
+					result += `${BNR} ракет в залпе\n`;
+				} else if (BNR === 0) {
+					result += `⚠️'bonShots' 0 может иметь смысл только в ребалансе. Рекомендуется ручная проверка\n`;
+				}
+			} else if (input.includes("bonShots=")) {
+				if (input.match(/bonShots=\s*/)) {
+					result += "⚠️Внимание! Значение 'bonShots' не соответствует ожидаемому! Требуется ручная проверка!\n";
+				} else {
+					result += "⚠️Внимание! Значение 'bonShots' не найдено! Требуется ручная проверка!\n";
+				}
+			}
+			
+			// Обработка bonWRadius
+			const bonWRadiusMatch = input.match(/bonWRadius=\+?(-?\d+)/);
+			if (bonWRadiusMatch) {
+				const S = parseInt(bonWRadiusMatch[1]);
+				if (S > 0) {
+					result += `Дальность стрельбы: +${S} ед.\n`;
+				} else if (S < 0) {
+					result += `Дальность стрельбы: ${S} ед.\n`;
+				} else if (S === 0) {
+					result += `⚠️'bonWRadius' 0 может иметь смысл только в ребалансе. Рекомендуется ручная проверка\n`;
+				}
+			} else if (input.includes("bonWRadius=")) {
+				if (input.match(/bonWRadius=\s*/)) {
+					result += "⚠️Внимание! Значение 'bonWRadius' не соответствует ожидаемому! Требуется ручная проверка!\n";
+				} else {
+					result += "⚠️Внимание! Значение 'bonWRadius' не найдено! Требуется ручная проверка!\n";
+				}
+			}
+			
+			// Обработка выстрелов/ход
+			const bonAttacksMatch = input.match(/bonAttacks=\+?(-?\d+)/);
+			if (bonAttacksMatch) {
+				const BNATKS = parseInt(bonAttacksMatch[1]);
+				if (BNATKS > 0) {
+					result += `+${BNATKS} выстрелов/ход\n`;
+				} else if (BNATKS < 0) {
+					result += `${BNATKS} выстрелов/ход\n`;
+				} else if (BNATKS === 0) {
+					result += `⚠️'bonAttacks' 0 может иметь смысл только в ребалансе. Рекомендуется ручная проверка\n`;
+				}
+			} else if (input.includes("bonAttacks=")) {
+				if (input.match(/bonAttacks=\s*/)) {
+					result += "⚠️Внимание! Значение 'bonAttacks' не соответствует ожидаемому! Требуется ручная проверка!\n";
+				} else {
+					result += "⚠️Внимание! Значение 'bonAttacks' не найдено! Требуется ручная проверка!\n";
+				}
+			}
+			
+			// Обработка очередности выстрела
+			const bonShotSpeedMatch = input.match(/bonShotSpeed=\+?(-?\d+)/);
+			if (bonShotSpeedMatch) {
+				const ASPD = parseInt(bonShotSpeedMatch[1]);
+			if (ASPD >= 0 && ASPD <= 100) {
+					result += `Очередность выстрела: ${ASPD}\n`;
+				} else if (ASPD < 0 || ASPD > 100) {
+					result += `⚠️Внимание! Допустимое значение 'bonShotSpeed' от '0' до '100' ( > '100' может использоваться, но не даст большего эффекта чем '100')!\n`;
+				}
+			} else if (input.includes("bonShotSpeed=")) {
+				if (input.match(/bonShotSpeed=\s*/)) {
+					result += "⚠️Внимание! Значение 'bonShotSpeed' не соответствует ожидаемому! Требуется ручная проверка!\n";
+				} else {
+					result += "⚠️Внимание! Значение 'bonShotSpeed' не найдено! Требуется ручная проверка!\n";
+				}
+			}
+
+            // Обработка WeaponMods
+            const weaponModsMatch = input.match(/WeaponMods=(.+)/);
+            if (weaponModsMatch) {
+                const mods = weaponModsMatch[1].split(',').map(mod => mod.trim());
+                const effects = new Set(); // Используем Set для уникальных эффектов
+
+                mods.forEach(mod => {
+                    switch (mod) {
+					    case 'Splinter':
+                            effects.add("⚠️Оружие осколочного типа (в 'WeaponMods' обычно не предусмотрено таких значений, рекомендуется ручная проверка)");
+							break;
+						case 'Energy':
+                            effects.add("⚠️Энергетическое оружие (в 'WeaponMods' обычно не предусмотрено таких значений, рекомендуется ручная проверка)");
+							break;
+						case 'Missile':
+                            effects.add("⚠️Ракетное оружие (в 'WeaponMods' обычно не предусмотрено таких значений, рекомендуется ручная проверка)");
+							break;
+                        case 'Decelerate':
+                            effects.add("+Эффект замедления");
+                            break;
+                        case 'DecelerateA':
+                            effects.add("+Эффект замедления");
+                            break;
+                        case 'DecelerateAEx':
+                            effects.add("+Эффект усилен. замедления");
+                            break;
+                        case 'Destruct':
+                            effects.add("+Эффект разрушения оборуд.");
+                            break;
+                        case 'Drain':
+                            effects.add("+Эффект вампиризма");
+                            break;
+                        case 'Shock':
+                            effects.add("+Эффект ионизации");
+                            break;
+                        case 'Acid':
+                            effects.add("+Эффект ослабл. брони цели");
+                            break;
+                        case 'Magnetic':
+                            effects.add("+Эффект ЭМ-помех");
+                            break;
+                        case 'Undefendable':
+                            effects.add("+Игнорирует ГЗП и броню");
+                            break;
+                        case 'NonLethal':
+                            effects.add("+Не может полностью уничтожить корабль");
+                            break;
+                        case 'ScanBonus':
+                            effects.add("+15% урон");
+                            break;
+                        case 'BonusToDamaged':
+                            effects.add("+Урон до 33% по поврежденным целям");
+                            break;
+                        case 'MoreDrop':
+                            effects.add("+Повышенный шанс дропа оборуд. при уничтож. цели");
+                            break;
+                        case 'DropCargo':
+                            effects.add("+5% шанс сброса товаров цели");
+                            break;
+                        case 'ReduceEngine':
+                            effects.add("+Разрушает двигатель цели");
+                            break;
+                        case 'BlockWeapon':
+                            effects.add("+Шанс блокиров. оружие цели");
+                            break;
+                        case 'BlockDroid':
+                            effects.add("+Шанс блокиров. дроид цели");
+                            break;
+                        case 'NoDelta':
+                            effects.add("+Всегда макс. урон");
+                            break;
+                        default:
+                            effects.add(mod); // Добавляем любое другое слово, если вдруг пул эффектов WeaponMods когда-нибудь расширится
+                    }
+                });
+
+                // Обработка условий для удаления дубликатов, чтобы не писалось несколько строк "эффект замедления"
+                if (effects.has("+Эффект усилен. замедления")) {
+                    effects.delete("+Эффект замедления");
+                }
+				
+                // Добавляем результаты WeaponMods в итоговый вывод
+                result += Array.from(effects).join('\n') + '\n';
+            }
+
+            // Обработка Equipments
+            if (!input.includes("Equipments=")) {
+                result += "⚠️Внимание: не найдено оборудование для акрина!\n";
+            } else if (equipMatch) {
+                const equipments = equipMatch[1].trim();
+
+                if (equipments === '' || equipments === 'Any') {
+                    result += "Подходит для любого оборудования и оружия.\n";
+                } else if (equipments.includes('Any')) {
+                    result += "⚠️Внимание! С указанием оборудования для акрина что-то не так, требуется ручная проверка.\n";
+                } else {
+                    const validEquipments = ['Hull', 'FuelTank', 'Engine', 'Radar', 'Scaner', 'Droid', 'Hook', 'DefGenerator', 'WEnergy', 'WSplinter', 'WMissile'];
+                    const foundEquipments = equipments.split(',').map(e => e.trim()).filter(e => validEquipments.includes(e));
+                    const otherEquipments = equipments.split(',').map(e => e.trim()).filter(e => !validEquipments.includes(e));
+
+                    // Сортировка в нормальном порядке (делалась для таблицы ММ, но и для акринов подойдет)
+                    const outputOrder = ['Engine', 'FuelTank', 'Droid', 'Hook', 'DefGenerator', 'Radar', 'Scaner', 'WEnergy', 'WSplinter', 'WMissile'];
+                    foundEquipments.sort((a, b) => outputOrder.indexOf(a) - outputOrder.indexOf(b));
+
+                    foundEquipments.forEach(e => {
+                        switch (e) {
+                            case 'Hull':
+                                result += "Подходит для корпуса.\n";
+                                break;
+                            case 'FuelTank':
+                                result += "Подходит для топл. бака.\n";
+                                break;
+                            case 'Engine':
+                                result += "Подходит для двигателя.\n";
+                                break;
+                            case 'Radar':
+                                result += "Подходит для радара.\n";
+                                break;
+                            case 'Scaner':
+                                result += "Подходит для сканера.\n";
+                                break;
+                            case 'Droid':
+                                result += "Подходит для дроида.\n";
+                                break;
+                            case 'Hook':
+                                result += "Подходит для захвата.\n";
+                                break;
+                            case 'DefGenerator':
+                                result += "Подходит для ГЗП.\n";
+                                break;
+                            case 'WEnergy':
+                                result += "Подходит для эн. оружия.\n";
+                                break;
+                            case 'WSplinter':
+                                result += "Подходит для оскол. оружия.\n";
+                                break;
+                            case 'WMissile':
+                                result += "Подходит для ракетн. оружия.\n";
+                                break;
+                        }
+                    });
+
+                    // Выводим другое оборудование, если такие префиксы есть, W01 например (известные значения такого оборудования расшифровываются уже в поле вывода в блоке кода ниже)
+                    if (otherEquipments.length > 0) {
+                        otherEquipments.forEach(e => {
+                            result += `Подходит для: ${e}\n`;
+                        });
+                    }
+                }
+            }
+				
+			// Обработка навыков
+			const skills = [
+				{ key: 'bonSkill1', name: 'точности' },
+				{ key: 'bonSkill2', name: 'маневренности' },
+				{ key: 'bonSkill3', name: 'техники' },
+				{ key: 'bonSkill4', name: 'торговли' },
+				{ key: 'bonSkill5', name: 'обаяния' },
+				{ key: 'bonSkill6', name: 'лидерства' },
+			];
+
+			skills.forEach(skill => {
+				const skillMatch = input.match(new RegExp(`${skill.key}=\\+?(-?\\d+)`));
+				if (skillMatch) {
+					const value = parseInt(skillMatch[1]);
+					if (value === 0) {
+						result += `⚠️'${skill.key}' 0 может иметь смысл только в ребалансе. Рекомендуется ручная проверка.\n`;
+					} else {
+						result += `Навык ${skill.name}: ${value > 0 ? '+' : ''}${value}\n`;
+					}
+				}
+			});
+
+			// Обработка bonSlotRadar
+			const bonSlotRadarMatch = input.match(/bonSlotRadar=\+?(-?\d+)/);
+			if (bonSlotRadarMatch) {
+				const U = parseInt(bonSlotRadarMatch[1]);
+				if (U === 1) {
+					result += "Слот радара: открывает\n";
+				} else if (U === -1) {
+					result += "Слот радара: закрывает\n";
+				} else if (U === 0) {
+					result += "⚠️'bonSlotRadar' 0 может иметь смысл только в ребалансе. Рекомендуется ручная проверка\n";
+				} else {
+					result += "⚠️Ошибка! Значение 'bonSlotRadar' не соответствует '1' или '-1'. Требуется ручная проверка!\n";
+				}
+			} else if (input.includes("bonSlotRadar=")) {
+				// Если строка найдена, но значение не указано
+				result += "⚠️Ошибка! Значение 'bonSlotRadar' не соответствует ожидаемому. Требуется ручная проверка!\n";
+			}
+			
+			// Обработка bonSlotScanner
+			const bonSlotScannerMatch = input.match(/bonSlotScaner=\+?(-?\d+)/);
+			if (bonSlotScannerMatch) {
+				const SC = parseInt(bonSlotScannerMatch[1]);
+				if (SC === 1) {
+					result += "Слот сканера: открывает\n";
+				} else if (SC === -1) {
+					result += "Слот сканера: закрывает\n";
+				} else if (SC === 0) {
+					result += "⚠️'bonSlotScaner' 0 может иметь смысл только в ребалансе. Рекомендуется ручная проверка\n";
+				} else {
+					result += "⚠️Ошибка! Значение 'bonSlotScaner' не соответствует '1' или '-1'. Требуется ручная проверка!\n";
+				}
+			} else if (input.includes("bonSlotScaner=")) {
+				// Если строка найдена, но значение не указано
+				result += "⚠️Ошибка! Значение 'bonSlotScaner' не соответствует ожидаемому. Требуется ручная проверка!\n";
+			}
+			
+			// Обработка bonSlotDroid
+			const bonSlotDroidMatch = input.match(/bonSlotDroid=\+?(-?\d+)/);
+			if (bonSlotDroidMatch) {
+				const DRD = parseInt(bonSlotDroidMatch[1]);
+				if (DRD === 1) {
+					result += "Слот дроида: открывает\n";
+				} else if (DRD === -1) {
+					result += "Слот дроида: закрывает\n";
+				} else if (DRD === 0) {
+					result += "⚠️'bonSlotDroid' 0 может иметь смысл только в ребалансе. Рекомендуется ручная проверка\n";
+				} else {
+					result += "⚠️Ошибка! Значение 'bonSlotDroid' не соответствует '1' или '-1'. Требуется ручная проверка!\n";
+				}
+			} else if (input.includes("bonSlotDroid=")) {
+				// Если строка найдена, но значение не указано
+				result += "⚠️Ошибка! Значение 'bonSlotDroid' не соответствует ожидаемому. Требуется ручная проверка!\n";
+			}
+			
+			// Обработка bonSlotHook
+			const bonSlotHookMatch = input.match(/bonSlotHook=\+?(-?\d+)/);
+			if (bonSlotHookMatch) {
+				const HK = parseInt(bonSlotHookMatch[1]);
+				if (HK === 1) {
+					result += "Слот захвата: открывает\n";
+				} else if (HK === -1) {
+					result += "Слот захвата: закрывает\n";
+				} else if (HK === 0) {
+					result += "⚠️'bonSlotHook' 0 может иметь смысл только в ребалансе. Рекомендуется ручная проверка\n";
+				} else {
+					result += "⚠️Ошибка! Значение 'bonSlotHook' не соответствует '1' или '-1'. Требуется ручная проверка!\n";
+				}
+			} else if (input.includes("bonSlotHook=")) {
+				// Если строка найдена, но значение не указано
+				result += "⚠️Ошибка! Значение 'bonSlotHook' не соответствует ожидаемому. Требуется ручная проверка!\n";
+			}
+			
+			// Обработка bonSlotDef
+			const bonSlotDefMatch = input.match(/bonSlotDef=\+?(-?\d+)/);
+			if (bonSlotDefMatch) {
+				const GZ = parseInt(bonSlotDefMatch[1]);
+				if (GZ === 1) {
+					result += "Слот ГЗП: открывает\n";
+				} else if (GZ === -1) {
+					result += "Слот ГЗП: закрывает\n";
+				} else if (GZ === 0) {
+					result += "⚠️'bonSlotDef' 0 может иметь смысл только в ребалансе. Рекомендуется ручная проверка\n";
+				} else {
+					result += "⚠️Ошибка! Значение 'bonSlotDef' не соответствует '1' или '-1'. Требуется ручная проверка!\n";
+				}
+			} else if (input.includes("bonSlotDef=")) {
+				// Если строка найдена, но значение не указано
+				result += "⚠️Ошибка! Значение 'bonSlotDef' не соответствует ожидаемому. Требуется ручная проверка!\n";
+			}
+
+			// Обработка bonSlotWeapon
+			const bonSlotWeaponMatch = input.match(/bonSlotWeapon=\+?(-?\d+)/);
+			if (bonSlotWeaponMatch) {
+				const Y = parseInt(bonSlotWeaponMatch[1]);
+				if (Y > 0 && Y <= 5) {
+					result += `Открывает ${Y} слот${Y > 1 ? 'ов' : ''} оружия.\n`;
+				} else if (Y < 0 && Y >= -5) {
+					result += `Закрывает ${Math.abs(Y)} слот${Math.abs(Y) > 1 ? 'ов' : ''} оружия.\n`;
+					if (Y === -5) {
+						result += "Как минимум '1' слот оружия всегда останется открытым.\n";
+					}
+				} else if (Y === 0) {
+					result += "⚠️'bonSlotWeapon' 0 может иметь смысл только в ребалансе. Рекомендуется ручная проверка.\n";
+				} else {
+					result += "⚠️Внимание! 'bonSlotWeapon' вне диапазона от '-5' до '5', требуется ручная проверка.\n";
+				}
+			} else if (input.includes("bonSlotWeapon=")) {
+				// Если строка найдена, но значение не указано
+				result += "⚠️Внимание! Значение 'bonSlotWeapon' не найдено! Требуется ручная проверка.\n";
+			}
+			
+			// Обработка bonSlotArt
+			const bonSlotArtMatch = input.match(/bonSlotArt=\+?(-?\d+)/);
+			if (bonSlotArtMatch) {
+				const Z = parseInt(bonSlotArtMatch[1]);
+				if (Z > 0 && Z <= 4) {
+					result += `Открывает ${Z} слот${Z > 1 ? 'ов' : ''} артефактов.\n`;
+				} else if (Z < 0 && Z >= -4) {
+					result += `Закрывает ${Math.abs(Z)} слот${Math.abs(Z) > 1 ? 'ов' : ''} артефактов.\n`;
+				} else if (Z === 0) {
+					result += "⚠️'bonSlotArt' 0 может иметь смысл только в ребалансе. Рекомендуется ручная проверка.\n";
+				} else {
+					result += "⚠️Внимание! 'bonSlotArt' вне диапазона от '-4' до '4', требуется ручная проверка.\n";
+				}
+			} else if (input.includes("bonSlotArt=")) {
+				// Если строка найдена, но значение не указано
+				result += "⚠️Внимание! Значение 'bonSlotArt' не найдено! Требуется ручная проверка.\n";
+			}
+
+			// Обработка bonSlotForsage
+			const bonSlotForsageMatch = input.match(/bonSlotForsage=\+?(-?\d+)/);
+			if (bonSlotForsageMatch) {
+				const FOR = parseInt(bonSlotForsageMatch[1]);
+				if (FOR === 1) {
+					result += "Слот форсажа: открывает\n";
+				} else if (FOR === -1) {
+					result += "Слот форсажа: закрывает\n";
+				} else if (FOR === 0) {
+					result += "⚠️'bonSlotForsage' 0 может иметь смысл только в ребалансе. Рекомендуется ручная проверка\n";
+				} else {
+					result += "⚠️Ошибка! Значение 'bonSlotForsage' не соответствует '1' или '-1'. Требуется ручная проверка!\n";
+				}
+			} else if (input.includes("bonSlotForsage=")) {
+				// Если строка найдена, но значение не указано
+				result += "⚠️Ошибка! Значение 'bonSlotForsage' не соответствует ожидаемому. Требуется ручная проверка!\n";
+			}
+
+            // Обработка bonExtraAkrinEff
+            const bonExtraAkrinEffMatch = input.match(/bonExtraAkrinEff=\+?(-?\d+)/);
+            if (bonExtraAkrinEffMatch) {
+                const AKREF = parseInt(bonExtraAkrinEffMatch[1]);
+                if (AKREF > 0) {
+                    result += `Бонусы акрина: +${AKREF}%\n`;
+                } else if (AKREF < 0 && AKREF >= -100) {
+                    result += `Бонусы акрина: ${AKREF}%\n`;
+                } else if (AKREF < -100) {
+                    result += `Бонусы акрина: ${AKREF}% (не имеет смысла, максимально допустимое значение '-100%')\n`;
+                } else if (AKREF === 0) {
+                    result += "⚠️'bonExtraAkrinEff' 0 может иметь смысл только в ребалансе. Рекомендуется ручная проверка.\n";
+                }
+            } else if (input.includes("bonExtraAkrinEff=")) {
+                result += "⚠️Внимание! Значение 'bonExtraAkrinEff' не соответствует ожидаемому! Требуется ручная проверка!\n";
+            }
+			
+            // Обработка штрафов акрина
+            const bonExtraAkrinPenaltyMatch = input.match(/bonExtraAkrinPenalty=\+?(-?\d+)/);
+            if (bonExtraAkrinPenaltyMatch) {
+                const AKRP = parseInt(bonExtraAkrinPenaltyMatch[1]);
+                if (AKRP > 0) {
+                    result += `Штрафы акрина: +${AKRP}%\n`;
+                } else if (AKRP < 0 && AKRP >= -100) {
+                    result += `Штрафы акрина: ${AKRP}%\n`;
+                } else if (AKRP < -100) {
+                    result += `Штрафы акрина: ${AKRP}% (не имеет смысла, максимально допустимое значение '-100%')\n`;
+                } else if (AKRP === 0) {
+                    result += "⚠️'bonExtraAkrinPenalty' 0 может иметь смысл только в ребалансе. Рекомендуется ручная проверка.\n";
+                }
+            } else if (input.includes("bonExtraAkrinPenalty=")) {
+                result += "⚠️Внимание! Значение 'bonExtraAkrinPenalty' не соответствует ожидаемому! Требуется ручная проверка!\n";
+            }
+
+			// Обработка лимита стимуляторов
+			const bonStimCapacityMatch = input.match(/bonStimCapacity=\+?(-?\d+)/);
+			if (bonStimCapacityMatch) {
+				const STMC = parseInt(bonStimCapacityMatch[1]);
+				if (STMC > 0) {
+					result += `Лимит стимуляторов: +${STMC}\n`;
+				} else if (STMC < 0) {
+					result += `Лимит стимуляторов: ${STMC}\n`;
+				} else if (STMC === 0) {
+					result += `⚠️'bonStimCapacity' 0 может иметь смысл только в ребалансе. Рекомендуется ручная проверка.\n`;
+				}
+			} else if (input.includes("bonStimCapacity=")) {
+				if (input.match(/bonStimCapacity=\s*/)) {
+					result += "⚠️Внимание! Значение 'bonStimCapacity' не соответствует ожидаемому! Требуется ручная проверка!\n";
+				} else {
+					result += "⚠️Внимание! Значение 'bonStimCapacity' не найдено! Требуется ручная проверка!\n";
+				}
+			}
+			
+			// Обработка лимита зондов
+			const bonZondsMatch = input.match(/bonZonds=\+?(-?\d+)/);
+			if (bonZondsMatch) {
+				const ZOND = parseInt(bonZondsMatch[1]);
+				if (ZOND > 0) {
+					result += `Лимит зондов: +${ZOND}\n`;
+				} else if (ZOND < 0) {
+					result += `Лимит зондов: ${ZOND}\n`;
+				} else if (ZOND === 0) {
+					result += `⚠️'bonZonds' 0 может иметь смысл только в ребалансе. Рекомендуется ручная проверка.\n`;
+				}
+			} else if (input.includes("bonZonds=")) {
+				if (input.match(/bonZonds=\s*/)) {
+					result += "⚠️Внимание! Значение 'bonZonds' не соответствует ожидаемому! Требуется ручная проверка!\n";
+				} else {
+					result += "⚠️Внимание! Значение 'bonZonds' не найдено! Требуется ручная проверка!\n";
+				}
+			}
+
+			// Обработка bonResistAsteroid
+			const bonResistAsteroidMatch = input.match(/bonResistAsteroid=\+?(-?\d+)/);
+			if (bonResistAsteroidMatch) {
+				const ASTR = parseInt(bonResistAsteroidMatch[1]);
+
+				if (ASTR > 0 && ASTR <= 100) {
+					result += `Урон от астероидов: -${ASTR}%\n`;
+				} else if (ASTR < 0) {
+					result += `Урон от астероидов: +${ASTR * -1}%\n`; //чтобы правильно отображался штраф к получаемому от астероидов урону
+				} else if (ASTR === 0) {
+					result += "⚠️'bonResistAsteroid' 0 может иметь смысл только в ребалансе. Рекомендуется ручная проверка.\n";
+				} else if (ASTR > 100) {
+					result += "⚠️Внимание! Значение 'bonResistAsteroid' не должно превышать '100'. Требуется ручная проверка!\n";
+				}
+			} else if (input.includes("bonResistAsteroid=")) {
+				// Если строка найдена, но значение не указано
+				result += "⚠️Внимание! Значение 'bonResistAsteroid' не соответствует ожидаемому! Требуется ручная проверка!\n";
+			}
+
+			// Проверка на наличие "LockedAcryn="
+			const lockedAcrynMatch = input.match(/LockedAcryn=(\d+)/);
+			if (lockedAcrynMatch) {
+				const lockedValue = lockedAcrynMatch[1];
+				if (lockedValue === '1') {
+					result += "Этот акрин запрещено снимать\n";
+				} else if (lockedValue === '2') {
+					result += "Этот акрин запрещено накладывать\n";
+				} else if (lockedValue === '3') {
+					result += "Этот акрин запрещено накладывать и снимать\n";
+				} else {
+					result += "Ошибка! 'LockedAcryn' может быть '1', '2' или '3'\n";
+				}
+			}
+
+			// Проверка на торговлю с Келлером
+			if (input.includes("KellerValue=") || input.includes("KellerExchange=")) {
+				result += "🌀Представляет ценность при торговле с Келлером\n";
+			}
+
+            // Проверка NoBridge
+			const NoBridgeMatch = input.match(/NoBridge=\+?(-?\d+)/);
+            if (NoBridgeMatch) {
+                const NoBridgeValue = NoBridgeMatch[1];
+                if (NoBridgeValue === '1') {
+                    result += "Мостик из ExpPilotBridge на корпус с данным акрином добавляться не будет\n";
+	            } else if (NoBridgeValue === '0') {
+                result += "⚠️Мостик на корпусе доступен, но 'NoBridge' 0 может иметь смысл только в ребалансе. Рекомендуется ручная проверка.\n";				
+                } else if (NoBridgeValue === '' || NoBridgeValue < 0 || NoBridgeValue > 1) {
+                    result += "⚠️Ошибка! Допустимые значения 'NoBridge': '1' или '0'\n";
+                }
+            }
+
+            // Предупреждение OnPlanets=1 выводится нижней строкой	
+			if (onPlanetsWarning) {
+				result += onPlanetsWarningSpace;
+				result += onPlanetsWarning;
+			}
+
+            // Удаление пустых строк
+            result = result.split('\n').filter(line => line.trim() !== '').join('\n');
+			
+			// Удаление слов <color> и </color>
+			result = result.replace(/<color>/g, '').replace(/<\/color>/g, '');
+			
+			// Удаление строк в формате <color=A,B,C>
+			result = result.replace(/<color=\d+,\d+,\d+>/g, '');
+			
+            // Замены значений
+            result = result.replace(/W01/g, "промышленного лазера")
+                           .replace(/W02/g, "осколочного орудия")
+                           .replace(/W03/g, "лезки")
+                           .replace(/W04/g, "ракетомета")
+                           .replace(/W05/g, "третона")
+                           .replace(/W06/g, "волнового фазера")
+                           .replace(/W07/g, "потокового бластера")
+                           .replace(/W08/g, "электронного резака")
+                           .replace(/W09/g, "мультирезонатора")
+                           .replace(/W10/g, "атомного визиона")
+                           .replace(/W11/g, "дезинтегратора")
+                           .replace(/W12/g, "турбогравира")
+                           .replace(/W13/g, "ИМХО-9000")
+                           .replace(/W14/g, "вертикса")
+                           .replace(/W15/g, "торпедного аппарата")
+                           .replace(/W16/g, "эсодафера")
+                           .replace(/W17/g, "кафаситора")
+                           .replace(/W18/g, "лирекрона")
+						   .replace(/Mabokit/g, "мабокита")
+						   .replace(/BBG_6174/g, "ББГ-6174")
+						   .replace(/Dom_burst/g, "магнитного сепаратора")
+						   .replace(/Dom_dual_laser/g, "спаренного турболазера")
+						   .replace(/Dom_laser/g, "импульсного бластера")
+						   .replace(/Dom_light/g, "энергопакетного разрядника")
+						   .replace(/Dom_rocket/g, "револьверного торпедомета")
+						   .replace(/frag_gun/g, "разрывного орудия")
+						   .replace(/grav_beam/g, "гравитонного лучемета")
+						   .replace(/laser_gun/g, "бластера Е-11")
+						   .replace(/slow_gun/g, "ретрактора")
+						   .replace(/sphere_gun/g, "прожектора вихря")
+						   .replace(/splash_faser/g, "сплэшевого фазера")
+						   .replace(/sub_gun/g, "Х-дефибриллятора")
+							.replace(/\bmaloc_laser\b/g, "боевого лазера ТБ-42")
+							.replace(/\bmaloc_laser2\b/g, "боевого лазера ТБ-47")
+							.replace(/\bphoton_gun\b/g, "фотонной пушки М4")
+							.replace(/\bphoton_gun2\b/g, "фотонной пушки М3")
+							.replace(/\bphoton_gun3\b/g, "фотонной пушки М2")
+							.replace(/\bBlazer, Kling\b/g, "Blazer")
+							.replace(/\bKeller, Kling\b/g, "Keller")
+							.replace(/\bTerron, Kling\b/g, "Terron")							
+						   .replace(/gaal_vision/g, "аннигилятора поля")
+							.replace(/\bpulse_gun\b/g, "пульс-гана R21")
+							.replace(/\bpulse_gun2\b/g, "пульс-гана R20")
+						   .replace(/MeonPlasmathrower/g, "меонного плазмомета")
+						   .replace(/PlasmaGun/g, "плазмогана") // Нет, это не одна пушка записана 2 раза, это так в "Fairan's Vision" она записана
+						   .replace(/Plasmagun/g, "плазмогана") // А так она записана в "Universe"
+							.replace(/\bWB\b/g, "военной базе")
+							.replace(/\bRC\b/g, "центре рейнджеров")
+							.replace(/\bPB\b/g, "пиратской базе")
+							.replace(/\bMC\b/g, "медицинском центре")
+							.replace(/\bBK\b/g, "бизнес-центре")
+							.replace(/\bSB\b/g, "научной базе")
+							.replace(/\bCB\b/g, "доминионе")
+							.replace(/\bTC\b/g, "технологическом центре")
+							.replace(/\bTCSmall\b/g, "технологическом центре")
+							.replace(/\bSSB\b/g, "подпространственной базе")
+							.replace(/\bSSBSmall\b/g, "подпространственной базе")
+							.replace(/\bBM\b/g, "чёрном рынке")
+							.replace(/\bBMSmall\b/g, "чёрном рынке")
+							.replace(/\bPlayerMB\b/g, "штабе наёмников")
+							.replace(/\bPlayerMercHQ\b/g, "штабе наёмников")
+							.replace(/\bPlayerMBSmall\b/g, "центре наемников")
+							.replace(/\bPlayerMB_licensed\b/g, "штабе наёмников (с 2-го уровня)")
+							.replace(/\bPlayerMercHQ_licensed\b/g, "штабе наёмников (с 2-го уровня)")
+							.replace(/\bPlayerMBSmall_licensed\b/g, "центре наемников")
+							.replace(/\bManaan\b/g, "свободном порту")
+							.replace(/\bManaanSmall\b/g, "свободном порту")
+							.replace(/\bHandler\b/g, "Хандлере")
+							.replace(/\bHandlerSmall\b/g, "Хандлере")
+							.replace(/\bMB\b/g, "центре наемников")
+							.replace(/\bMBSmall\b/g, "центре наемников")
+							.replace(/\bMercHQ\b/g, "штабе 'Атланта'/'Фэйенгелиона'/'Ржавых топоров' (не имеет значения, туда нельзя сесть)")
+							.replace(/\bMercHQ_licensed\b/g, "штабе 'Атланта'/'Фэйенгелиона'/'Ржавых топоров' с лицензией на починку нестандартного оборудования (не имеет значения, туда нельзя сесть)")							
+						   .replace(/SubFactionDesignDepartment/g, "Stellar");						   
+
+            // Вывод результата
+            output.value = result;
+        });
+
+        document.getElementById('copy').addEventListener('click', function() {
+            const output = document.getElementById('output');
+            output.select();
+            document.execCommand('copy');
+			
+			// Снимаем выделение
+			output.setSelectionRange(0, 0); // Устанавливаем курсор в начало, чтобы снять выделение
+			output.blur(); // Убираем фокус с текстового поля
+
+            const notification = document.getElementById('notification');
+            notification.style.display = 'block';
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 1500);
+        });
+
+        document.getElementById('reset').addEventListener('click', function() {
+            document.getElementById('input').value = '';
+            document.getElementById('input').placeholder = 'Вставьте акрин оружия/оборудования/корпуса из Lang.dat здесь...';
+            document.getElementById('output').value = '';
+        });
+    </script>
+
+</body>
+</html>
