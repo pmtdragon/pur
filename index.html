@@ -290,7 +290,7 @@
             const ruinsMatch = input.match(/Ruins=(.*)/);
             if (ruinsMatch) {
                 const ruinsValue = ruinsMatch[1].trim();
-                if (ruinsValue === '') {
+                if (ruinsValue === '' || ruinsValue === 'None') {
                     result += "Продается на станциях: нет\n"; //отсутствие значения в Ruins в акринах игра трактует как запрет продажи на станциях
                 } else {
                     const ruinsList = ruinsValue.split(',').map(item => item.trim());
