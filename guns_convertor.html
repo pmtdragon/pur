@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Конвертер орудий</title>
+    <style>
+        body {
+            background: -webkit-linear-gradient(135deg, rgb(30, 30, 30), rgb(46, 46, 46));
+			background: -moz-linear-gradient(135deg, rgb(30, 30, 30), rgb(46, 46, 46));
+			background: -o-linear-gradient(135deg, rgb(30, 30, 30), rgb(46, 46, 46));
+			background: -ms-linear-gradient(135deg, rgb(30, 30, 30), rgb(46, 46, 46));
+			background: linear-gradient(135deg, rgb(30, 30, 30), rgb(46, 46, 46));
+            color: #d1d1d1;
+            font-family: 'Arial', sans-serif;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+		
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 2.3em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+        }
+        .center-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .input-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 20px;
+            width: 100%;
+        }
+        textarea {
+            width: 100%;
+            min-height: 180px;
+            resize: vertical;
+            overflow: auto;
+            padding: 15px;
+            background-color: #2e2e2e;
+            color: #afafaf;
+            border: 1px solid #afafaf;
+            border-radius: 8px;
+            font-size: 16px;
+            margin-bottom: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+        #output {
+            min-height: 320px;
+            background-color: #333;
+            color: #afafaf;
+            border: 1px solid #afafaf;
+            border-radius: 8px;
+            font-size: 16px;
+            padding: 15px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            width: 100%;
+        }
+        button {
+            background-color: #1e1e1e;
+            color: #afafaf;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 20px;
+            margin: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s, transform 0.2s;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+        button:hover {
+            background-color: #afafaf;
+            color: #1e1e1e;
+            transform: scale(1.05);
+        }
+        .message {
+            display: none;
+            margin-top: 10px;
+            color: #66bb6a;
+            text-align: center;
+            font-size: 14px;
+        }
+        #notification {
+            display: none;
+            margin-top: 10px;
+            color: #66bb6a;
+            text-align: center;
+            font-size: 14px;
+        }
+        .tabs {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .tab {
+            background-color: #2e2e2e;
+            color: #afafaf;
+            padding: 10px 20px;
+            margin: 0 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            border: 1px solid transparent;
+        }
+        .tab:hover {
+            background-color: #afafaf;
+            color: #1e1e1e;
+        }
+        .tab.active {
+            background-color: #afafaf;
+            color: #1e1e1e;
+            border: 1px solid #1e1e1e;
+        }
+    </style>
+</head>
+<body>
+    <div class="tabs">
+        <div class="tab" onclick="changeTab('index.html')">Акрины</div>
+        <div class="tab" onclick="changeTab('mm_convertor.html')">Mикромодули</div>
+        <div class="tab active" onclick="changeTab('guns_convertor.html')">Оружие</div>
+        <div class="tab" onclick="changeTab('hulls_serie_convertor.html')">Серии корпусов</div>
+        <div class="tab" onclick="changeTab('frequency_calculator.html')">Частота кадров</div>
+    </div>
+    <h1>Конвертер орудий</h1>
+    <div class="center-container">
+        <div class="input-area">	
+			<textarea id="input" placeholder="Вставьте одно орудие (базовую версию, не акрин) из Lang.dat здесь..."></textarea>
+			<div>
+			<button id="convert">Convert</button>
+			<button id="copy">Copy</button>
+			<button id="reset">Reset</button>
+            </div>			
+			<div class="message" id="notification">Успешно скопировано в буфер обмена</div>
+		</div>
+		<textarea id="output" readonly placeholder="Здесь появятся результаты..."></textarea>
+    </div>
+
+    <script>
+        function changeTab(page) {
+            // Изменение активной вкладки
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Перенаправление на выбранную страницу
+            window.location.href = page;
+        }
+		
+        document.getElementById('convert').addEventListener('click', function() {
+            const input = document.getElementById('input').value;
+            const output = document.getElementById('output');
+            let result = '';
+
+            // Обработка WeaponMods
+            const damageSetMatch = input.match(/DamageSet=(.+)/);
+            if (damageSetMatch) {
+                const mods = damageSetMatch[1].split(',').map(mod => mod.trim());
+                const effects = new Set(); // Используем Set для уникальных эффектов
+
+                mods.forEach(mod => {
+                    switch (mod) {
+					    case 'Splinter':
+                            effects.add("Оружие осколочного типа");
+							break;
+						case 'Energy':
+                            effects.add("Энергетическое оружие");
+							break;
+						case 'Missile':
+                            effects.add("Ракетное оружие");
+							break;
+                        case 'Decelerate':
+                            effects.add("+Эффект замедления");
+                            break;
+                        case 'DecelerateA':
+                            effects.add("+Эффект замедления");
+                            break;
+                        case 'DecelerateAEx':
+                            effects.add("+Эффект усилен. замедления");
+                            break;
+                        case 'Destruct':
+                            effects.add("+Эффект разрушения оборуд.");
+                            break;
+                        case 'Drain':
+                            effects.add("+Эффект вампиризма");
+                            break;
+                        case 'Shock':
+                            effects.add("+Эффект ионизации");
+                            break;
+                        case 'Acid':
+                            effects.add("+Эффект ослабл. брони цели");
+                            break;
+                        case 'Magnetic':
+                            effects.add("+Эффект ЭМ-помех");
+                            break;
+                        case 'Undefendable':
+                            effects.add("+Игнорирует ГЗП и броню");
+                            break;
+                        case 'NonLethal':
+                            effects.add("+Не может полностью уничтожить корабль");
+                            break;
+                        case 'ScanBonus':
+                            effects.add("+15% урон (при превышении сканером защиты цели)");
+                            break;
+                        case 'BonusToDamaged':
+                            effects.add("+Урон до 33% по поврежденным целям (при превышении сканером защиты цели)");
+                            break;
+                        case 'MoreDrop':
+                            effects.add("+Повышенный шанс дропа оборуд. при уничтож. цели");
+                            break;
+                        case 'DropCargo':
+                            effects.add("+5% шанс на дроп товара из трюма цели при нанесении ей урона");
+                            break;
+                        case 'ReduceEngine':
+                            effects.add("+Разрушает двигатель цели");
+                            break;
+                        case 'BlockWeapon':
+                            effects.add("+Шанс блокиров. оружие цели");
+                            break;
+                        case 'BlockDroid':
+                            effects.add("+Шанс блокиров. дроид цели");
+                            break;
+                        case 'NoDelta':
+                            effects.add("+Всегда макс. урон");
+                            break;
+                        default:
+                            effects.add(mod); // Добавляем любое другое слово, если вдруг пул эффектов WeaponMods когда-нибудь расширится
+                    }
+                });
+
+                // Обработка условий для удаления дубликатов, чтобы не писалось несколько строк "эффект замедления"
+                if (effects.has("+Эффект усилен. замедления")) {
+                    effects.delete("+Эффект замедления");
+                }
+				
+                // Добавляем результаты в итоговый вывод
+                result += Array.from(effects).join('\n') + '\n';
+            }
+
+            // Обработка ShotType
+            const shotTypeMatch = input.match(/ShotType=(.+)/);
+            if (shotTypeMatch) {
+                const shotTypes = shotTypeMatch[1].split(',').map(type => type.trim());
+                const unknownTypes = [];
+
+                shotTypes.forEach(type => {
+                    if (type === "Normal") {
+                        result += "Стрельба по одиночной цели\n";
+                    } else if (type === "Splash") {
+                        result += "Сплэш: по области вокруг основной цели (как атомный визион)\n";
+                    } else if (type === "AreaDamage") {
+                        result += "Сплэш: по всем в радиусе (как вертикс)\n";
+                    } else if (type === "Exploder") {
+                        result += "Может вызвать цепную реакцию (как турбогравир)\n";
+                    } else if (type === "Rocket") {
+                        result += "Обычная ракета\n";
+                    } else if (/^Rocket(\d+)$/.test(type)) {
+                        result += `Обычная ракета (${type.replace('Rocket', '')} ракет в одном выстреле)\n`;
+                    } else if (type === "Missile") {
+                        result += "Обычная ракета со сплэшем (не торпеда)\n";
+                    } else if (/^Missile(\d+)$/.test(type)) {
+                        result += `Обычная ракета со сплэшем (${type.replace('Missile', '')} ракет в одном выстреле)\n`;
+                    } else if (type === "Torpedo") {
+                        result += "Торпеда (снаряды не сталкиваются с контейнерами и возвращаются, если цель не найдена)\n";
+                    } else if (type === "Chain") {
+                        result += "Бьет цепочкой (как волновой фазер) или 150% в 1 цель\n";
+                    } else if (/^Chain(\d+)$/.test(type)) {
+                        const chainCount = parseInt(type.replace('Chain', ''), 10);
+                        if (chainCount < 4) {
+                            result += `Бьет цепочкой (как волновой фазер, но ${chainCount} цели) или 150% в 1 цель\n`;
+                        } else {
+                            result += `Бьет цепочкой (как волновой фазер, но ${chainCount} целей) или 150% в 1 цель\n`;
+                        }
+                    } else {
+                        unknownTypes.push(type);
+                    }
+                });
+
+                if (unknownTypes.length > 0) {
+                    result += `⚠️Неизвестный тип выстрела: ${unknownTypes.join(', ')}\n`;
+                }
+            } else {
+                result += "⚠️Внимание! Отсутствует параметр 'ShotType'! Требуется ручная проверка!\n";
+            }
+
+            // Проверка на MissileChanceToBeHit
+            const missileChanceMatch = input.match(/MissileChanceToBeHit=\+?(-?\d+)/);
+            if (missileChanceMatch) {
+                const chance = parseInt(missileChanceMatch[1], 10);
+                if (chance >= 0 && chance <= 100) {
+                    if (shotTypeMatch) {
+                        const shotTypes = shotTypeMatch[1].split(',').map(type => type.trim());
+                        if (shotTypes.some(type => ['Torpedo', 'Rocket', 'Missile'].includes(type))) {
+                            result += `Шанс сбить снаряд: ${chance}%\n`;
+                        }
+                    }
+                } else {
+                    result += "⚠️Внимание! 'MissileChanceToBeHit' должен быть в диапазоне от 0 до 100%! Требуется ручная проверка!\n";
+                }
+            } else {
+                result += "⚠️Не найден параметр 'MissileChanceToBeHit'. Если это не ракетное оружие, не обращайте внимание. Если ракетное, требуется ручная проверка!\n";
+            }
+
+			// Обработка SecondaryDamageRadius
+			const secondaryDamageMatch = input.match(/SecondaryDamageRadius=\+?(-?\d+)/);
+			if (secondaryDamageMatch) {
+				const radius = parseInt(secondaryDamageMatch[1], 10);
+				const shotType = shotTypeMatch ? shotTypeMatch[1] : '';
+				if (radius > 0) {
+					if (shotType.includes('Splash') || shotType.includes('Exploder') || shotType.includes('Missile') || shotType.includes('Torpedo')) {
+						result += `Радиус сплэша: ${radius}\n`;
+					} else {
+						result += "⚠️Внимание! 'SecondaryDamageRadius' не применим к данному типу выстрела (применяется для 'Splash', 'Exploder', 'Missile' или 'Torpedo')!\n";
+					}
+				}
+			} else {
+				result += "⚠️Внимание! Отсутствует параметр 'SecondaryDamageRadius'! Требуется ручная проверка!\n";
+			}
+
+			// Обработка ShotsPerTurn
+			const shotsPerTurnMatch = input.match(/ShotsPerTurn=\+?(-?\d+)/);
+			if (shotsPerTurnMatch) {
+			const shotsPerTurn = shotsPerTurnMatch[1];
+			if (parseInt(shotsPerTurn, 10) <= 0) { // Если значение меньше или равно нулю
+				result += "⚠️Внимание! В базовой пушке не указываются отрицательные значения 'ShotsPerTurn'!\n";
+			} else {
+				result += `Выстрелов/ход: ${shotsPerTurn}\n`;
+			}
+			} else {
+				result += "⚠️Внимание! С 'ShotsPerTurn' что-то не так! Требуется ручная проверка!\n";
+			}
+
+			// Обработка MiningFactor
+			const miningFactorMatch = input.match(/MiningFactor=([+-]?\d+(\.\d+)?)/);
+			if (miningFactorMatch) {
+            const miningFactor = parseFloat(miningFactorMatch[1]); // Получаем значение X
+            if (miningFactor > 0) {
+                const mineralPreservation = Math.floor((1 / miningFactor) * 100); // Рассчитываем и округляем
+                result += `${mineralPreservation}% сохр. минералов\n`;
+            } else {
+                result += "⚠️Внимание! 'MiningFactor' вне допустимого диапазона! Требуется ручная проверка!\n";
+            }
+			} else {
+            result += "⚠️Внимание! 'MiningFactor' не найден! Требуется ручная проверка!\n";
+			}
+			
+			// Обработка Speed
+			const speedMatch = input.match(/Speed=\s*([+-]?\d+)/);
+			if (speedMatch) {
+				const speedValue = parseInt(speedMatch[1], 10);
+				if (speedValue < 0) {
+					result += "⚠️Внимание! 'Speed' не может быть < 0! Требуется ручная проверка!\n";
+				} else if (speedValue > 100) {
+					result += `Очередн. выстрела: ${speedValue}\n`;
+					result += "🔎Очередность > 100 игрой трактуется как 100. 'Speed' > 100 может лишь компенсировать дебаффы, влияющие на очередность выстрела\n";
+				} else {
+					result += `Очередн. выстрела: ${speedValue}\n`;
+				}
+			} else if (input.includes("Speed=")) {
+				result += "⚠️Внимание! Значение параметра 'Speed' не найдено! Требуется ручная проверка!\n";
+			}
+
+			// Обработка ArcadeType
+            const arcadeTypeMatch = input.match(/ArcadeType=(\w+(-\w+)?)/);
+            if (arcadeTypeMatch) {
+                const arcadeType = arcadeTypeMatch[1];
+                switch (arcadeType) {
+                    case "Industrial_Laser":
+                        result += "В гипере: промышленный лазер\n";
+                        break;
+                    case "Fragmentation_Cannon":
+                        result += "В гипере: осколочное орудие\n";
+                        break;
+                    case "Flux":
+                        result += "В гипере: лезка\n";
+                        break;
+                    case "Missile_Launcher":
+                        result += "В гипере: ракетомет\n";
+                        break;
+                    case "Treton":
+                        result += "В гипере: третон\n";
+                        break;
+                    case "Wave_Phaser":
+                        result += "В гипере: волновой фазер\n";
+                        break;
+                    case "Flow_Blaster":
+                        result += "В гипере: потоковый бластер\n";
+                        break;
+                    case "Electronic_Cutter":
+                        result += "В гипере: эл. резак\n";
+                        break;
+                    case "Multiresonator":
+                        result += "В гипере: мультирезонатор\n";
+                        break;
+                    case "Atomic_Vision":
+                        result += "В гипере: атомный визион\n";
+                        break;
+                    case "Disintegrator":
+                        result += "В гипере: дезинтегратор\n";
+                        break;
+                    case "Turbogravitron":
+                        result += "В гипере: турбогравир\n";
+                        break;
+                    case "IMHO-9000":
+                        result += "В гипере: ИМХО-9000\n";
+                        break;
+                    case "Vertix":
+                        result += "В гипере: вертикс\n";
+                        break;
+                    case "Torpedo_Tube":
+                        result += "В гипере: торпедный аппарат\n";
+                        break;
+                    case "Esodapher":
+                        result += "В гипере: эсодафер\n";
+                        break;
+                    case "Caphasitor":
+                        result += "В гипере: кафаситор\n";
+                        break;
+                    case "Lirecron":
+                        result += "В гипере: лирекрон\n";
+                        break;
+                    default:
+                        result += "⚠️Внимание! Неизвестный параметр 'ArcadeType'! Требуется ручная проверка!\n";
+                        break;
+                }
+            } else {
+                result += "⚠️Внимание! С назначением орудия в гипере что-то не так! Требуется ручная проверка!\n";
+            }
+
+            // Обработка TechLevel
+            const techLevelMatch = input.match(/TechLevel=\+?(-?\d+)/);
+            if (techLevelMatch) {
+                const techLevelValue = techLevelMatch[1];
+                result += `Встречается с ${techLevelValue} ГТУ (если получение реализовано через магазин)\n`;
+            } else {
+                result += "⚠️Внимание! Значение 'TechLevel' не соответствует ожидаемому. Требуется ручная проверка!\n";
+            }
+
+            // Обработка StoreAvailability
+            const storeAvailabilityMatch = input.match(/StoreAvailability=(.+)/);
+            if (storeAvailabilityMatch) {
+                const availability = storeAvailabilityMatch[1].trim();
+
+                if (availability === 'Free' || availability === '') {
+                    result += "Продается: на любых планетах и станциях (независимо от принадлежности к Коалиции или Пиратскому клану)\n";
+                    result += "Встречается производства: малоков, пеленгов, людей, фэян, гаальцев, пиратов\n";
+                } else if (availability === 'NotSold') {
+                    result += "Продается: нигде (вероятно, выдача регулируется скриптом)\n";
+                } else if (availability === 'NotSoldAndNodeRepair') {
+                    result += "Продается: нигде (вероятно, выдача регулируется скриптом)\n";
+                    result += "Для ремонта требует ноды\n";
+                } else if (availability === 'SystemOnly') {
+                    result += "Вероятно, выдача регулируется скриптом\n";				
+                } else if (availability === 'CoalitionOnly') {
+                    result += "Продается: на коалиционных планетах и станциях, расположенных в системах, принадлежащих Коалиции (и при этом не враждебных ей)\n";
+                    result += "Встречается производства: малоков, пеленгов, людей, фэян, гаальцев\n";
+                } else if (availability === 'PirateOnly') {
+                    result += "Продается: на пиратских планетах и станциях, расположенных в системах, принадлежащих Пиратскому клану (и при этом не враждебных ему)\n";
+                    result += "Встречается производства: пиратов\n";
+                } else if (availability === 'MalocOnly') {
+                    result += "Продается: на малокских планетах и станциях, расположенных в системах, принадлежащих Коалиции (и при этом не враждебных ей)\n";
+                    result += "Встречается производства: малоков\n";
+                } else if (availability === 'PelengOnly') {
+                    result += "Продается: на пеленгских планетах и станциях, расположенных в системах, принадлежащих Коалиции (и при этом не враждебных ей)\n";
+                    result += "Встречается производства: пеленгов\n";
+                } else if (availability === 'PeopleOnly') {
+                    result += "Продается: на людских планетах и станциях, расположенных в системах, принадлежащих Коалиции (и при этом не враждебных ей)\n";
+                    result += "Встречается производства: людей\n";
+                } else if (availability === 'FeiOnly') {
+                    result += "Продается: на фэянских планетах и станциях, расположенных в системах, принадлежащих Коалиции (и при этом не враждебных ей)\n";
+                    result += "Встречается производства: фэян\n";
+                } else if (availability === 'GaalOnly') {
+                    result += "Продается: на гаальских планетах и станциях, расположенных в системах, принадлежащих Коалиции (и при этом не враждебных ей)\n";
+                    result += "Встречается производства: гаальцев\n";
+                } else {
+                    result += "⚠️Внимание! Значение 'StoreAvailability' не соответствует ожидаемому! Требуется ручная проверка!\n";
+                }
+            } else {
+                result += "Продается: на любых планетах и станциях (независимо от принадлежности к Коалиции или Пиратскому клану)\n";
+                result += "Встречается производства: малоков, пеленгов, людей, фэян, гаальцев, пиратов\n";
+            }
+
+            // Проверка на наличие Owner, Ruins или OnPlanets
+            if (input.includes('Owner=') || input.includes('Ruins=') || input.includes('OnPlanets=')) {
+                result += "⚠️Внимание! Для базовых орудий (не акрина) параметры 'Owner', 'Ruins' и 'OnPlanets' не применяются\n";
+            }
+
+			// Проверка на торговлю с Келлером
+			if (input.includes("KellerValue=") || input.includes("KellerExchange=")) {
+				result += "🌀Представляет ценность при торговле с Келлером\n";
+			}
+
+            // Добавление общего уведомления
+            result += "---------------------\n";
+            result += "🔎Рекомендуется проверить значения дальности и урона для 'A-H' в игре, т.к. формула определения дальности для орудий неизвестна (а дальность ракетного оружия иногда регулируется через 'AverageRadius' вместо 'MissileRadius'). В некоторых случаях эти параметры могут определяться скриптом\n";
+
+            // Добавление общего уведомления
+            result += "🔎Рекомендуется проверить 'SetCustomWeaponAvailability' в скрипте, а также значение 'Owner' в акринах орудия (если они есть) на предмет конфликтов с 'StoreAvailability' у базового орудия (т.к. значения вида 'StoreAvailability=MalocOnly' в базовом орудии и отсутствие в 'Owner' акрина этого орудия производителя 'Maloc' приведет к тому, что акрин не появится в магазине)\n";
+
+            // Удаление пустых строк
+            result = result.split('\n').filter(line => line.trim() !== '').join('\n');						   
+
+            // Вывод результата
+            output.value = result;
+        });
+
+            // Копирование результата в буфер
+        document.getElementById('copy').addEventListener('click', function() {
+            const output = document.getElementById('output');
+            output.select();
+            document.execCommand('copy');
+			
+			// Снимаем выделение
+			output.setSelectionRange(0, 0); // Устанавливаем курсор в начало, чтобы снять выделение
+			output.blur(); // Убираем фокус с текстового поля
+
+			// Уведомление об успешном копировании
+            const notification = document.getElementById('notification');
+            notification.style.display = 'block';
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 1500);
+        });
+
+			// Сброс поля ввода и вывода по кнопке reset
+        document.getElementById('reset').addEventListener('click', function() {
+            document.getElementById('input').value = '';
+            document.getElementById('input').placeholder = 'Вставьте орудие (базовую версию, не акрин) из Lang.dat здесь...';
+            document.getElementById('output').value = '';
+        });
+    </script>
+
+</body>
+</html>

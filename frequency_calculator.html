@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Калькулятор частоты кадров</title>
+    <style>
+        body {
+            background: linear-gradient(135deg, #1e1e1e, #2e2e2e);
+            color: white;
+            font-family: 'Arial', sans-serif;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        h1 {
+            margin-bottom: 20px;
+        }
+        input {
+            margin: 10px;
+            padding: 10px;
+            font-size: 16px;
+            width: 250px;
+            border: none;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+        .readonly {
+            background-color: #333;
+            color: #aaa;
+            cursor: not-allowed;
+        }
+        .input-field {
+            background-color: #444;
+            color: white;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin-top: 20px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .tabs {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .tab {
+            background-color: #2e2e2e;
+            color: #afafaf;
+            padding: 10px 20px;
+            margin: 0 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            border: 1px solid transparent;
+        }
+        .tab:hover {
+            background-color: #afafaf;
+            color: #1e1e1e;
+        }
+        .tab.active {
+            background-color: #afafaf;
+            color: #1e1e1e;
+            border: 1px solid #1e1e1e;
+        }
+    </style>
+</head>
+<body>
+    <div class="tabs">
+        <div class="tab" onclick="changeTab('index.html')">Акрины</div>
+        <div class="tab" onclick="changeTab('mm_convertor.html')">Mикромодули</div>
+        <div class="tab" onclick="changeTab('guns_convertor.html')">Оружие</div>
+        <div class="tab" onclick="changeTab('hulls_serie_convertor.html')">Серии корпусов</div>
+        <div class="tab active" onclick="changeTab('frequency_calculator.html')">Частота кадров</div>
+    </div>
+    <h1>Калькулятор частоты кадров</h1>
+
+    <label for="mainDat">Частота в Main.dat:</label>
+    <input type="number" id="mainDat" class="input-field" placeholder="Введите значение" oninput="calculateFrameRate()">
+
+    <label for="fps">Кадров/сек.:</label>
+    <input type="text" id="fps" class="readonly" readonly placeholder="Здесь появятся результаты...">
+
+    <label for="framesInAnimation">Кадров в анимации:</label>
+    <input type="number" id="framesInAnimation" class="input-field" placeholder="Введите значение" oninput="calculateAnimationDuration()">
+
+    <label for="realDuration">Реальная длительность анимации (сек.):</label>
+    <input type="text" id="realDuration" class="readonly" readonly placeholder="Здесь появятся результаты...">
+
+    <button onclick="resetFields()">Сбросить</button>
+
+    <script>
+        function changeTab(page) {
+            // Изменение активной вкладки
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Перенаправление на выбранную страницу
+            window.location.href = page;
+        }	
+
+        function calculateFrameRate() {
+            const mainDatValue = parseFloat(document.getElementById('mainDat').value);
+            const fps = mainDatValue && mainDatValue !== 0 ? (1000 / mainDatValue).toFixed(2) : 0;
+            document.getElementById('fps').value = fps;
+            calculateAnimationDuration(); // Обновляем длительность анимации при изменении FPS
+        }
+
+        function calculateAnimationDuration() {
+            const framesInAnimationValue = parseFloat(document.getElementById('framesInAnimation').value);
+            const fpsValue = parseFloat(document.getElementById('fps').value);
+            const realDuration = fpsValue ? (framesInAnimationValue / fpsValue).toFixed(2) : 0;
+            document.getElementById('realDuration').value = realDuration;
+        }
+
+        function resetFields() {
+            document.getElementById('mainDat').value = '';
+            document.getElementById('fps').value = '';
+            document.getElementById('framesInAnimation').value = '';
+            document.getElementById('realDuration').value = '';
+        }
+    </script>
+
+</body>
+</html>
