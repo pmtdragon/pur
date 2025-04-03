@@ -623,8 +623,8 @@
 			const artefactMatch = inputText.match(/Artefact=(-?\d+)/);
 			if (artefactMatch) {
 			const artefactValue = parseInt(artefactMatch[1], 10);
-			if (artefactValue < -4 || artefactValue > 4) {
-            n3Output += "⚠️Внимание: значение 'Artefact' вне диапазона от '-4' до '4'. Требуется ручная проверка!\n";
+			if (artefactValue < -4 || artefactValue > 16) {
+            n3Output += "⚠️Внимание: значение 'Artefact' вне диапазона от '-4' до '16'. Требуется ручная проверка!\n";
 				}
 			}
 
