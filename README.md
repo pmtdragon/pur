@@ -1,8 +1,3 @@
-# Multilanguage README
-
-[![en](https://img.shields.io/badge/lang-en-red.svg)](./readme.en.md)
-[![ru](https://img.shields.io/badge/lang-ru-green.svg)](./readme.md)
-
 <h2 align="left">Что это за проект?</h2>
 Это переводчик баз данных из игры "Космические рейнджеры HD: Революция" на понятный язык.
 Умеет работать с *.dat файлами, предварительно конвертированными в *.txt.
